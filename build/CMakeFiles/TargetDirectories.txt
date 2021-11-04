@@ -1,0 +1,8 @@
+C:/Users/menwst/Documents/CPP/EZO_sensors-mbed/build/CMakeFiles/EZO_sensors.dir
+C:/Users/menwst/Documents/CPP/EZO_sensors-mbed/build/CMakeFiles/flash-EZO_sensors.dir
+C:/Users/menwst/Documents/CPP/EZO_sensors-mbed/build/CMakeFiles/edit_cache.dir
+C:/Users/menwst/Documents/CPP/EZO_sensors-mbed/build/CMakeFiles/rebuild_cache.dir
+C:/Users/menwst/Documents/CPP/EZO_sensors-mbed/build/mbed-cmake/mbed-src/CMakeFiles/mbed-linker-script.dir
+C:/Users/menwst/Documents/CPP/EZO_sensors-mbed/build/mbed-cmake/mbed-src/CMakeFiles/rebuild_cache.dir
+C:/Users/menwst/Documents/CPP/EZO_sensors-mbed/build/mbed-cmake/mbed-src/CMakeFiles/mbed-os-static.dir
+C:/Users/menwst/Documents/CPP/EZO_sensors-mbed/build/mbed-cmake/mbed-src/CMakeFiles/edit_cache.dir
