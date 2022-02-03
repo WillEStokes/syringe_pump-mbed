@@ -6,7 +6,8 @@
 
 EZOSensors ezosensors(
     LED1,
-    D9); // green LED
+    D9, // green LED
+    D10 ); // mosfet PWM
 
 int main(int, char**) {
     // Run

@@ -11,29 +11,42 @@ const EZOSensors::ComMessage EZOSensors::comMessages[] = {
     {FID_GET_SENSOR_INFO, (EZOSensors::messageHandlerFunc)&EZOSensors::getSensorInfo},
     {FID_GET_SENSOR_STATUS, (EZOSensors::messageHandlerFunc)&EZOSensors::getSensorStatus},
     {FID_GET_SYSTEM_INFO, (EZOSensors::messageHandlerFunc)&EZOSensors::getSystemInfo},
+    {FID_SET_TARGET_TEMP, (EZOSensors::messageHandlerFunc)&EZOSensors::setTargetTemp},
+    {FID_SET_PID, (EZOSensors::messageHandlerFunc)&EZOSensors::setPID},
+    {FID_GET_PID, (EZOSensors::messageHandlerFunc)&EZOSensors::getPID},
 };
 
 /*! Parameterised constructor */
 EZOSensors::EZOSensors(
         PinName redLED,
-        PinName statusLED)
-        : _redLED(redLED),
+        PinName statusLED,
+        PinName mosfetPWM )
+        : _pid(0.1, 100, 0, 0.1, 0.01, 0.5),
+        _phSensor(I2C_SDA, I2C_SCL, PH_ADDRESS),
+        _tempSensor(I2C_SDA, I2C_SCL, TEMP_ADDRESS),
+        _redLED(redLED),
         _statusLED(statusLED),
+        _pwmDutyCycle(mosfetPWM),
         _fidCount(sizeof (comMessages) / sizeof (ComMessage)), // constant
         _msgHeaderLength(sizeof (MessageHeader)) { //
+    
     // Turn LED ON by default
     _redLED = 0;
     _statusLED = 1;
-    
+
+    _pwmDutyCycle.period_ms(100);
+    _pwmDutyCycle.write(0);
+
     //initialise non-constant variables
+    _pidMax = 100;
+    _pidMin = 0;
+    _targetTemp = 0;
+    _statState = 0;
     _phSensorConnected = false;
     _tempSensorConnected = false;
     _CMDRead = false;
     _readingPending = false;
 }
-
-EZO phSensor(I2C_SDA, I2C_SCL, PH_ADDRESS); // sda, scl, address
-EZO tempSensor(I2C_SDA, I2C_SCL, TEMP_ADDRESS); // sda, scl, address
 
 /*! Get status */
 void EZOSensors::getStatus(const MessageHeader* data) { 
@@ -51,10 +64,42 @@ void EZOSensors::getStatus(const MessageHeader* data) {
     }
     
     status.boardState = _boardState;
+    status.targetTemp = _targetTemp;
     status.phSensorConnected = _phSensorConnected;
     status.tempSensorConnected = _tempSensorConnected;
+    status.pwmDutyCycle = _pwmDutyCycle.read();
     
     _socket->send((char*) &status, sizeof(SystemStatus));
+}
+
+/*! Configure hardware */
+void EZOSensors::setTargetTemp(const SetTargetTemp* data) {
+    _targetTemp = data->targetTemp;
+}
+
+/*! Configure PID */
+void EZOSensors::setPID(const PidConfig* data) {
+    _pid.setPID(data->dt , data->max, data->min, data->Kp, data->Kd, data->Ki);
+    _pidMax = data->max;
+    _pidMin = data->min;
+}
+
+void EZOSensors::getPID(const MessageHeader* data) {
+    static PidConfig pidConfig;
+    static PID::PidData pidData;
+
+    pidData = _pid.getPID();
+
+    pidConfig.header.packetLength = sizeof(PidConfig);
+    pidConfig.header.fid = FID_GET_PID;
+    pidConfig.dt = pidData.dt;
+    pidConfig.max = pidData.max;
+    pidConfig.min = pidData.min;
+    pidConfig.Kp = pidData.Kp;
+    pidConfig.Kd = pidData.Kd;
+    pidConfig.Ki = pidData.Ki;
+
+    _socket->send((char*) &pidConfig, sizeof(pidConfig));
 }
 
 /*! Send read cmd */
@@ -63,15 +108,15 @@ void EZOSensors::sendReadCMD(const MessageHeader* data) {
         return;
     }
     
-    phSensor.sendReadCMD();
-    tempSensor.sendReadCMD();
+    _phSensor.sendReadCMD();
+    _tempSensor.sendReadCMD();
     
-    _tickerReadCMD.attach(callback(this, &EZOSensors::receiveReading), 1s);
+    _tickerEZO.attach(callback(this, &EZOSensors::receiveReading), 1s);
     _readingPending = true;
 }
 
 void EZOSensors::receiveReading() {
-    _tickerReadCMD.detach();
+    _tickerEZO.detach();
     
     _readingPending = false;
     _CMDRead = true;
@@ -82,9 +127,17 @@ void EZOSensors::getSensorData(const MessageHeader* data) {
     static SensorData sensorData;
 
     if (!_readingPending) {
-        _phReading = phSensor.receiveReading();
-        _tempReading = tempSensor.receiveReading();
+        _phReading = _phSensor.receiveReading();
+        _tempReading = _tempSensor.receiveReading();
     }
+
+    _pwmDutyCycle = _pid.calculate(_targetTemp, _tempReading) / (_pidMax - _pidMin);
+
+    // if (_targetTemp < _tempReading) {
+    //     _pwmDutyCycle = 0;
+    // } else {
+    //     _pwmDutyCycle = 1;
+    // }
     
     sensorData.header.packetLength = sizeof(SensorData);
     sensorData.header.fid = FID_GET_SENSOR_DATA;
@@ -107,8 +160,8 @@ void EZOSensors::getSensorInfo(const MessageHeader* data) {
         return;
     }
     
-    _phSensorInfo = phSensor.getSensorInfo();
-    _tempSensorInfo = tempSensor.getSensorInfo();
+    _phSensorInfo = _phSensor.getSensorInfo();
+    _tempSensorInfo = _tempSensor.getSensorInfo();
     
     strcpy(sensorInfo.ph, _phSensorInfo.c_str());
     strcpy(sensorInfo.temp, _tempSensorInfo.c_str());
@@ -129,8 +182,8 @@ void EZOSensors::getSensorStatus(const MessageHeader* data) {
         return;
     }
     
-    _phSensorStatus = phSensor.getSensorStatus();
-    _tempSensorStatus = tempSensor.getSensorStatus();
+    _phSensorStatus = _phSensor.getSensorStatus();
+    _tempSensorStatus = _tempSensor.getSensorStatus();
     
     strcpy(sensorStatus.ph, _phSensorStatus.c_str());
     strcpy(sensorStatus.temp, _tempSensorStatus.c_str());
@@ -221,16 +274,16 @@ void EZOSensors::setBoardState(int state) {
     switch(_boardState) {
         case WAIT_FOR_CONNECTION:
             // Blink status LED
-            _tickerStatus.attach(callback(this, &EZOSensors::flipStatusLED), 500ms);
+            _tickerEZO.attach(callback(this, &EZOSensors::flipStatusLED), 500ms);
             break;
         case CONNECTED:
             // Solid status LED
-            _tickerStatus.detach();
+            _tickerEZO.detach();
             _redLED = 0;
             _statusLED = 1;
             break;
         default:
-            _tickerStatus.detach();
+            _tickerEZO.detach();
             _redLED = 0;
             _statusLED = 1;
             break;
@@ -255,13 +308,17 @@ void EZOSensors::run() {
         
         _socket = _server.accept();
         _socket->getpeername(&_clientAddr);
+        // _socket->set_timeout(1000);
         
         // Indicate state of a system
         setBoardState(CONNECTED);
         
         while(true) {
             // Wait for a header
-            if (_socket->recv(data, _msgHeaderLength) <= 0) break;
+            _socketBytes = _socket->recv(data, _msgHeaderLength);
+            if (_socketBytes <= 0) break;
+            
+            // if (_socketBytes > 0) {
             header = (MessageHeader*)data;
             
             if (header->packetLength != _msgHeaderLength) {
@@ -277,6 +334,15 @@ void EZOSensors::run() {
             } else {
                 comReturn(data, MSG_ERROR_NOT_SUPPORTED);
             }
+            // } else if (_socketBytes = -3001) { // recv has timed out
+            //     _tempReading = _tempSensor.receiveReading();
+            //     if (_targetTemp < _tempReading) {
+            //         _pwmDutyCycle = 0;
+            //     } else {
+            //         _pwmDutyCycle = 1;
+            //     }
+            //     _tempSensor.sendReadCMD();
+            // } else break;
         }
         
         // Client disconnected
@@ -285,8 +351,10 @@ void EZOSensors::run() {
         // Indicate disconnected state
         setBoardState(WAIT_FOR_CONNECTION);
 
-        phSensor.sleep();
-        tempSensor.sleep();
+        _readingPending = false;
+        _pwmDutyCycle.write(0);
+        _phSensor.sleep();
+        _tempSensor.sleep();
     }
 }
 

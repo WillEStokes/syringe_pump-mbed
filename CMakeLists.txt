@@ -21,7 +21,8 @@ ${CMAKE_SOURCE_DIR}/lib)
 # add_mbed_executable(hello_world HelloWorld.cpp)
 add_mbed_executable(EZO_sensors main.cpp)
 target_sources(EZO_sensors PRIVATE ../src/EZOSensors.cpp
-../lib/EZO.cpp)
+../lib/EZO.cpp
+../lib/pid.cpp)
 
 # build report
 # -------------------------------------------------------------
