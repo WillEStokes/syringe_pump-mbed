@@ -93,6 +93,55 @@ float EZO::QTcompensation (void)
     }
 }
 
+int EZO::setAddress (uint8_t newAddress)
+{
+    clear();
+
+    char dig[3] = { NULL, NULL, NULL};
+    int x = 0;
+    while (newAddress > 0 && x < 3) {
+        dig[x] = newAddress % 10;
+        newAddress /= 10;
+        x++;
+    }
+
+    cmdData[0] = 'I';
+    cmdData[1] = '2';
+    cmdData[2] = 'C';
+    cmdData[3] = ',';
+    // cmdData[4] = '1';
+    // cmdData[5] = '0';
+    // cmdData[6] = '1';
+
+    // cmdData[4] = dig[2];
+    // if (newAddress >= 10) {
+    //     cmdData[5] = dig[1]; }
+    // if (newAddress >= 100) {
+    //     cmdData[6] = dig[0]; }
+
+    if (dig[1] == NULL && dig[2] == NULL) {
+        cmdData[4] = dig[0] + 48;
+    } else if (dig[2] == NULL) {
+        cmdData[4] = dig[1] + 48;
+        cmdData[5] = dig[0] + 48;
+    } else {
+        cmdData[4] = dig[2] + 48;
+        cmdData[5] = dig[1] + 48;
+        cmdData[6] = dig[0] + 48;
+    }
+
+    i2c.write(address, cmdData, x + 4, false);
+    // i2c.write(address, cmdData, 7, false);
+    thread_sleep_for(300);
+
+    i2c.read(address, ezodata, 1, false);
+    if( ezodata[0] == 1) {
+        return success;
+    } else {
+        return failed;
+    }
+}
+
 string EZO::getSensorInfo(void)
 {
     clear();

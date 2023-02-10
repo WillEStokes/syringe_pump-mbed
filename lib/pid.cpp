@@ -5,128 +5,153 @@
 #include <cmath>
 #include "pid.h"
 
-class PIDImpl
-{
-    public:      
-        PIDImpl( double dt, double max, double min, double Kp, double Kd, double Ki );
-        ~PIDImpl();
-        double calculate( double setpoint, double pv );
-        void setPID( double dt, double max, double min, double Kp, double Kd, double Ki );
-        PID::PidData getPID();
+// PID::~PID() 
+// {
+// }
 
-    private:
-        double _dt;
-        double _max;
-        double _min;
-        double _Kp;
-        double _Kd;
-        double _Ki;
-        double _pre_error;
-        double _integral;
-};
-
-
-PID::PID( double dt, double max, double min, double Kp, double Kd, double Ki )
-{
-    pidimpl = new PIDImpl(dt,max,min,Kp,Kd,Ki);
-}
-
-double PID::calculate( double setpoint, double pv )
-{
-    return pidimpl->calculate(setpoint,pv);
-}
-
-void PID::setPID( double dt, double max, double min, double Kp, double Kd, double Ki )
-{
-    pidimpl->setPID(dt, max, min, Kp, Kd, Ki);
-}
-
-PID::PidData PID::getPID()
-{
-    static PID::PidData pidData;
-
-    pidData = pidimpl->getPID();
-
-    return pidData;
-}
-
-PID::~PID() 
-{
-    delete pidimpl;
-}
-
-/**
- * Implementation
- */
-PIDImpl::PIDImpl( double dt, double max, double min, double Kp, double Kd, double Ki ) :
+PID::PID( double dt, double max, double min, double Kp, double Kd, double Ki, double Kf, float step, float setpoint, uint8_t method, PinName mosfetPWM ) :
     _dt(dt),
     _max(max),
     _min(min),
     _Kp(Kp),
     _Kd(Kd),
     _Ki(Ki),
+    _Kf(Kf),
+    _step(step),
+    _setpoint(setpoint),
+    _method(method),
+    _pwmDutyCycle(mosfetPWM),
     _pre_error(0),
-    _integral(0)
+    _integral(0),
+    _limit(1)
 {
+    _pwmDutyCycle.period_ms(100);
+    _pwmDutyCycle.write(0);
 }
 
-void PIDImpl::setPID( double dt, double max, double min, double Kp, double Kd, double Ki ) {
+void PID::setPID( double dt, double max, double min, double Kp, double Kd, double Ki, double Kf ) {
     _dt = dt;
     _max = max;
     _min = min;
     _Kp = Kp;
     _Kd = Kd;
     _Ki = Ki;
-    _pre_error = 0;
+    _Kf = Kf;
+}
+
+void PID::setPidMethod(uint8_t method) {
+    _method = method;
+}
+
+void PID::setStep (float step) {
+    _step = step;
+}
+
+void PID::setLimit (float limit) {
+    _limit = limit;
+}
+
+void PID::reset() {
     _integral = 0;
+    _setpoint = 0;
+    _pwmDutyCycle.write(0);
 }
 
-PID::PidData PIDImpl::getPID() {
-    static PID::PidData pidImplData;
-    pidImplData.dt = _dt;
-    pidImplData.max = _max;
-    pidImplData.min = _min;
-    pidImplData.Kp = _Kp;
-    pidImplData.Kd = _Kd;
-    pidImplData.Ki = _Ki;
-
-    return pidImplData;
+double PID::getIntegral() {
+    return _integral;
 }
 
-double PIDImpl::calculate( double setpoint, double pv )
+float PID::getSetpoint() {
+    return _setpoint;
+}
+
+float PID::getStep() {
+    return _step;
+}
+
+uint8_t PID::getMethod() {
+    return _method;
+}
+
+float PID::getLimit() {
+    return _limit;
+}
+
+PID::PidData PID::getPID() {
+    static PID::PidData pidData;
+    pidData.dt = _dt;
+    pidData.max = _max;
+    pidData.min = _min;
+    pidData.Kp = _Kp;
+    pidData.Kd = _Kd;
+    pidData.Ki = _Ki;
+    pidData.Kf = _Kf;
+
+    return pidData;
+}
+
+double PID::calculate( float setpointTarget, float pv, bool initSetpoint)
 {
+    if (initSetpoint) // Initialise _setpoint to measured temp on first call
+        _setpoint = pv;
+    
+    // Setpoint ramping
+    if (_setpoint + _step < setpointTarget)
+        _setpoint = _setpoint + _step;
+    else if (_setpoint - _step >= setpointTarget)
+        _setpoint = _setpoint - _step;
+    else if ((_setpoint - _step < setpointTarget) || (_setpoint + _step > setpointTarget))
+        _setpoint = setpointTarget;
     
     // Calculate error
-    double error = setpoint - pv;
+    _error = _setpoint - pv;
 
     // Proportional term
-    double Pout = _Kp * error;
+    _Pout = _Kp * _error;
 
     // Integral term
-    _integral += error * _dt;
-    double Iout = _Ki * _integral;
+    _temp_integral = _integral + _error * _dt;
+    
+    _Iout = _Ki * _temp_integral;
 
     // Derivative term
-    double derivative = (error - _pre_error) / _dt;
-    double Dout = _Kd * derivative;
+    _derivative = (_error - _pre_error) / _dt;
+    _Dout = _Kd * _derivative;
+
+    // Feedforward term
+    _Fout = _Kf * _setpoint;
 
     // Calculate total output
-    double output = Pout + Iout + Dout;
+    _output = _Pout + _Iout + _Dout + _Fout;
 
-    // Restrict to max/min
-    if( output > _max )
-        output = _max;
-    else if( output < _min )
-        output = _min;
+    // Implement clamping
+    switch (_method) {
+        case NONE:
+            _integral = _temp_integral;
+        break;
+        case CLAMPING:
+            if( _output > _max * _limit) {
+                if (_error < 0)
+                    _integral = _temp_integral;
+            } else if( _output < _min ) {
+                if (_error > 0)
+                    _integral = _temp_integral;
+            }
+        break;
+    }
+
+    if( _output > _max * _limit) {
+        _output = _max * _limit;
+    } else if( _output < _min ) {
+        _output = _min;
+    }
 
     // Save error to previous error
-    _pre_error = error;
+    _pre_error = _error;
 
-    return output;
-}
+    _pwmDutyCycle = _output / (_max - _min);
 
-PIDImpl::~PIDImpl()
-{
+    return _output;
 }
 
 #endif

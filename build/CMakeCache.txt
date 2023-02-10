@@ -425,7 +425,7 @@ CMAKE_STRIP-ADVANCED:INTERNAL=1
 //ADVANCED property for variable: CMAKE_VERBOSE_MAKEFILE
 CMAKE_VERBOSE_MAKEFILE-ADVANCED:INTERNAL=1
 //Details about finding Python3
-FIND_PACKAGE_MESSAGE_DETAILS_Python3:INTERNAL=[C:/Users/menwst/AppData/Local/Programs/Python/Python39/python.exe][cfound components: Interpreter ][v3.9.6()]
+FIND_PACKAGE_MESSAGE_DETAILS_Python3:INTERNAL=[C:/Users/menwst/AppData/Local/Programs/Python/Python39/python.exe][cfound components: Interpreter ][v3.9.13()]
 //ADVANCED property for variable: HAVE_INTELHEX
 HAVE_INTELHEX-ADVANCED:INTERNAL=1
 //ADVANCED property for variable: HAVE_MBED_OS_TOOLS

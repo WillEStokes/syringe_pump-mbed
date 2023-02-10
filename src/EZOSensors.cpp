@@ -11,22 +11,37 @@ const EZOSensors::ComMessage EZOSensors::comMessages[] = {
     {FID_GET_SENSOR_INFO, (EZOSensors::messageHandlerFunc)&EZOSensors::getSensorInfo},
     {FID_GET_SENSOR_STATUS, (EZOSensors::messageHandlerFunc)&EZOSensors::getSensorStatus},
     {FID_GET_SYSTEM_INFO, (EZOSensors::messageHandlerFunc)&EZOSensors::getSystemInfo},
-    {FID_SET_TARGET_TEMP, (EZOSensors::messageHandlerFunc)&EZOSensors::setTargetTemp},
+    {FID_SET_TEMP_SETPOINT, (EZOSensors::messageHandlerFunc)&EZOSensors::setTempSetpoint},
     {FID_SET_PID, (EZOSensors::messageHandlerFunc)&EZOSensors::setPID},
     {FID_GET_PID, (EZOSensors::messageHandlerFunc)&EZOSensors::getPID},
+    {FID_RESET_PID, (EZOSensors::messageHandlerFunc)&EZOSensors::resetPID},
+    {FID_SET_PID_STEP, (EZOSensors::messageHandlerFunc)&EZOSensors::setPidStep},
+    {FID_SET_PID_METHOD, (EZOSensors::messageHandlerFunc)&EZOSensors::setPidMethod},
+    {FID_SET_ADDRESS, (EZOSensors::messageHandlerFunc)&EZOSensors::setEZOAddress},
+    {FID_SET_PID_LIMIT, (EZOSensors::messageHandlerFunc)&EZOSensors::setPidLimit},
+    {FID_GET_PID_LIMIT, (EZOSensors::messageHandlerFunc)&EZOSensors::getPidLimit},
+    {FID_CALIBRATE_LOW, (EZOSensors::messageHandlerFunc)&EZOSensors::calibrateLow},
+    {FID_CALIBRATE_MID, (EZOSensors::messageHandlerFunc)&EZOSensors::calibrateMid},
+    {FID_CALIBRATE_HIGH, (EZOSensors::messageHandlerFunc)&EZOSensors::calibrateHigh},
+    {FID_FACTORY_RESET_EZO, (EZOSensors::messageHandlerFunc)&EZOSensors::resetEzo},
 };
 
 /*! Parameterised constructor */
 EZOSensors::EZOSensors(
         PinName redLED,
-        PinName statusLED,
-        PinName mosfetPWM )
-        : _pid(0.1, 100, 0, 0.1, 0.01, 0.5),
+        PinName statusLED )
+        // PinName mosfetPWM )
+        :
+        _pid_1(0.5, 100, 0, 9, 0, 0.006, 0, 0.1, 0, 1, D10),
+        _pid_2(0.5, 100, 0, 9, 0, 0.006, 0, 0.1, 0, 1, D11),
+        _pid_3(0.5, 100, 0, 9, 0, 0.006, 0, 0.1, 0, 1, D12),
         _phSensor(I2C_SDA, I2C_SCL, PH_ADDRESS),
-        _tempSensor(I2C_SDA, I2C_SCL, TEMP_ADDRESS),
+        _tempSensor_1(I2C_SDA, I2C_SCL, TEMP_ADDRESS_1),
+        _tempSensor_2(I2C_SDA, I2C_SCL, TEMP_ADDRESS_2),
+        _tempSensor_3(I2C_SDA, I2C_SCL, TEMP_ADDRESS_3),
         _redLED(redLED),
         _statusLED(statusLED),
-        _pwmDutyCycle(mosfetPWM),
+        // _pwmDutyCycle(mosfetPWM),
         _fidCount(sizeof (comMessages) / sizeof (ComMessage)), // constant
         _msgHeaderLength(sizeof (MessageHeader)) { //
     
@@ -34,18 +49,21 @@ EZOSensors::EZOSensors(
     _redLED = 0;
     _statusLED = 1;
 
-    _pwmDutyCycle.period_ms(100);
-    _pwmDutyCycle.write(0);
+    // _pwmDutyCycle.period_ms(100);
+    // _pwmDutyCycle.write(0);
 
     //initialise non-constant variables
-    _pidMax = 100;
-    _pidMin = 0;
-    _targetTemp = 0;
+    // _pidMax = 100;
+    // _pidMin = 0;
+    _tempSetpoint = 0;
     _statState = 0;
     _phSensorConnected = false;
-    _tempSensorConnected = false;
+    _tempSensor_1Connected = false;
+    _tempSensor_2Connected = false;
+    _tempSensor_3Connected = false;
     _CMDRead = false;
     _readingPending = false;
+    _initSetpoint = true;
 }
 
 /*! Get status */
@@ -57,49 +75,187 @@ void EZOSensors::getStatus(const MessageHeader* data) {
     
     checkSensorConnection();
     
-    if (!_phSensorConnected || !_tempSensorConnected) {
+    if (!_tempSensor_1Connected || !_tempSensor_2Connected || !_tempSensor_3Connected) {
         status.header.error = MSG_ERROR_SENSOR_DISCONNECTED;
     } else {
         status.header.error = MSG_OK;
     }
     
     status.boardState = _boardState;
-    status.targetTemp = _targetTemp;
+    status.tempSetpoint = _tempSetpoint;
     status.phSensorConnected = _phSensorConnected;
-    status.tempSensorConnected = _tempSensorConnected;
-    status.pwmDutyCycle = _pwmDutyCycle.read();
+    status.tempSensor_1Connected = _tempSensor_1Connected;
+    status.tempSensor_2Connected = _tempSensor_2Connected;
+    status.tempSensor_3Connected = _tempSensor_3Connected;
+    status.pid_1Output = _pid_1Output;
+    status.pid_2Output = _pid_2Output;
+    status.pid_3Output = _pid_3Output;
+    status.pid_1Integral = _pid_1.getIntegral();
+    status.pid_2Integral = _pid_2.getIntegral();
+    status.pid_3Integral = _pid_3.getIntegral();
+    status.pid_1Setpoint = _pid_1.getSetpoint();
+    status.pid_2Setpoint = _pid_2.getSetpoint();
+    status.pid_3Setpoint = _pid_3.getSetpoint();
+    status.pid_1Step = _pid_1.getStep();
+    status.pid_2Step = _pid_2.getStep();
+    status.pid_3Step = _pid_3.getStep();
+    status.pid_1Method = _pid_1.getMethod();
+    status.pid_2Method = _pid_2.getMethod();
+    status.pid_3Method = _pid_3.getMethod();
     
     _socket->send((char*) &status, sizeof(SystemStatus));
 }
 
 /*! Configure hardware */
-void EZOSensors::setTargetTemp(const SetTargetTemp* data) {
-    _targetTemp = data->targetTemp;
+void EZOSensors::setTempSetpoint(const SetTempSetpoint* data) {
+    _tempSetpoint = data->tempSetpoint;
+    _initSetpoint = true;
+}
+
+void EZOSensors::setPidMethod(const SetPidMethod* data) {
+    _pid_1.setPidMethod(data->antiWindUpMethod);
+    _pid_2.setPidMethod(data->antiWindUpMethod);
+    _pid_3.setPidMethod(data->antiWindUpMethod);
+}
+
+void EZOSensors::setPidStep(const SetPidStep* data) {
+    _pid_1.setStep(data->step);
+    _pid_2.setStep(data->step);
+    _pid_3.setStep(data->step);
+}
+
+void EZOSensors::setPidLimit(const PidLimit* data) {
+    _pid_1.setLimit(data->limit);
+    _pid_2.setLimit(data->limit);
+    _pid_3.setLimit(data->limit);
+}
+
+/*! Get sensor data */
+void EZOSensors::getPidLimit(const GetPidConfig* data) {
+    static PidLimit pidLimit;
+
+    switch (data->pid) {
+        case 1:
+            pidLimit.limit = _pid_1.getLimit();
+        break;
+        case 2:
+            pidLimit.limit = _pid_2.getLimit();
+        break;
+        case 3:
+            pidLimit.limit = _pid_3.getLimit();
+        break;
+    }
+
+    pidLimit.header.packetLength = sizeof(pidLimit);
+    pidLimit.header.fid = FID_GET_PID_LIMIT;
+    _socket->send((char*) &pidLimit, sizeof(pidLimit));
+}
+
+void EZOSensors::resetPID(const MessageHeader* data) {
+    _pid_1.reset();
+    _pid_2.reset();
+    _pid_3.reset();
 }
 
 /*! Configure PID */
-void EZOSensors::setPID(const PidConfig* data) {
-    _pid.setPID(data->dt , data->max, data->min, data->Kp, data->Kd, data->Ki);
-    _pidMax = data->max;
-    _pidMin = data->min;
+void EZOSensors::setPID(const PidParams* data) {
+    _pid_1.setPID(data->dt , data->max, data->min, data->Kp, data->Kd, data->Ki, data->Kf);
+    _pid_2.setPID(data->dt , data->max, data->min, data->Kp, data->Kd, data->Ki, data->Kf);
+    _pid_3.setPID(data->dt , data->max, data->min, data->Kp, data->Kd, data->Ki, data->Kf);
+    // _pidMax = data->max;
+    // _pidMin = data->min;
 }
 
-void EZOSensors::getPID(const MessageHeader* data) {
-    static PidConfig pidConfig;
+void EZOSensors::getPID(const GetPidConfig* data) {
+    static PidParams pidParams;
     static PID::PidData pidData;
 
-    pidData = _pid.getPID();
+    switch (data->pid) {
+        case 1:
+            pidData = _pid_1.getPID();
+        break;
+        case 2:
+            pidData = _pid_2.getPID();
+        break;
+        case 3:
+            pidData = _pid_3.getPID();
+        break;
+    }
 
-    pidConfig.header.packetLength = sizeof(PidConfig);
-    pidConfig.header.fid = FID_GET_PID;
-    pidConfig.dt = pidData.dt;
-    pidConfig.max = pidData.max;
-    pidConfig.min = pidData.min;
-    pidConfig.Kp = pidData.Kp;
-    pidConfig.Kd = pidData.Kd;
-    pidConfig.Ki = pidData.Ki;
+    pidParams.header.packetLength = sizeof(PidParams);
+    pidParams.header.fid = FID_GET_PID;
+    pidParams.dt = pidData.dt;
+    pidParams.max = pidData.max;
+    pidParams.min = pidData.min;
+    pidParams.Kp = pidData.Kp;
+    pidParams.Kd = pidData.Kd;
+    pidParams.Ki = pidData.Ki;
+    pidParams.Kf = pidData.Kf;
 
-    _socket->send((char*) &pidConfig, sizeof(pidConfig));
+    _socket->send((char*) &pidParams, sizeof(pidParams));
+}
+
+void EZOSensors::setEZOAddress(const SetEzoAddress* data) {
+    static int addressChanged = 2;
+    
+    switch (data->oldAddress << 1) {
+        case TEMP_ADDRESS_1:
+            addressChanged = _tempSensor_1.setAddress(data->newAddress);
+        break;
+        case TEMP_ADDRESS_2:
+            addressChanged = _tempSensor_2.setAddress(data->newAddress);
+        break;
+        case TEMP_ADDRESS_3:
+            addressChanged = _tempSensor_3.setAddress(data->newAddress);
+        break;
+        default:
+        break;
+    }
+
+    if (addressChanged == 1)
+        comReturn(data, MSG_OK);
+    else
+        comReturn(data, MSG_ERROR_NOT_SUPPORTED);
+}
+
+void EZOSensors::resetEzo(const MessageHeader* data) {
+    _phSensor.factoryReset();
+    _tempSensor_1.factoryReset();
+    _tempSensor_2.factoryReset();
+    _tempSensor_3.factoryReset();
+}
+
+void EZOSensors::calibrateLow(const MessageHeader* data) {
+    static int calibrationError;
+    
+    calibrationError = _phSensor.calibratingLow();
+
+    if (calibrationError == 1)
+        comReturn(data, MSG_OK);
+    else
+        comReturn(data, MSG_ERROR_NOT_SUPPORTED);
+}
+
+void EZOSensors::calibrateMid(const MessageHeader* data) {
+    static int calibrationError;
+    
+    calibrationError = _phSensor.calibratingMid();
+
+    if (calibrationError == 1)
+        comReturn(data, MSG_OK);
+    else
+        comReturn(data, MSG_ERROR_NOT_SUPPORTED);
+}
+
+void EZOSensors::calibrateHigh(const MessageHeader* data) {
+    static int calibrationError;
+    
+    calibrationError = _phSensor.calibratingHigh();
+
+    if (calibrationError == 1)
+        comReturn(data, MSG_OK);
+    else
+        comReturn(data, MSG_ERROR_NOT_SUPPORTED);
 }
 
 /*! Send read cmd */
@@ -109,7 +265,9 @@ void EZOSensors::sendReadCMD(const MessageHeader* data) {
     }
     
     _phSensor.sendReadCMD();
-    _tempSensor.sendReadCMD();
+    _tempSensor_1.sendReadCMD();
+    _tempSensor_2.sendReadCMD();
+    _tempSensor_3.sendReadCMD();
     
     _tickerEZO.attach(callback(this, &EZOSensors::receiveReading), 1s);
     _readingPending = true;
@@ -128,21 +286,24 @@ void EZOSensors::getSensorData(const MessageHeader* data) {
 
     if (!_readingPending) {
         _phReading = _phSensor.receiveReading();
-        _tempReading = _tempSensor.receiveReading();
+        _temp_1Reading = _tempSensor_1.receiveReading();
+        _temp_2Reading = _tempSensor_2.receiveReading();
+        _temp_3Reading = _tempSensor_3.receiveReading();
     }
 
-    _pwmDutyCycle = _pid.calculate(_targetTemp, _tempReading) / (_pidMax - _pidMin);
+    _pid_1Output = _pid_1.calculate(_tempSetpoint, _temp_1Reading, _initSetpoint);
+    _pid_2Output = _pid_2.calculate(_tempSetpoint, _temp_2Reading, _initSetpoint);
+    _pid_3Output = _pid_3.calculate(_tempSetpoint, _temp_3Reading, _initSetpoint);
+    if (_CMDRead)
+        _initSetpoint = false;
+    // _pwmDutyCycle = _pidOutput / (_pidMax - _pidMin);
 
-    // if (_targetTemp < _tempReading) {
-    //     _pwmDutyCycle = 0;
-    // } else {
-    //     _pwmDutyCycle = 1;
-    // }
-    
     sensorData.header.packetLength = sizeof(SensorData);
     sensorData.header.fid = FID_GET_SENSOR_DATA;
     sensorData.ph = _phReading;
-    sensorData.temp = _tempReading;
+    sensorData.temp_1 = _temp_1Reading;
+    sensorData.temp_2 = _temp_2Reading;
+    sensorData.temp_3 = _temp_3Reading;
     
     _socket->send((char*) &sensorData, sizeof(SensorData));
 }
@@ -161,10 +322,14 @@ void EZOSensors::getSensorInfo(const MessageHeader* data) {
     }
     
     _phSensorInfo = _phSensor.getSensorInfo();
-    _tempSensorInfo = _tempSensor.getSensorInfo();
+    _tempSensor_1Info = _tempSensor_1.getSensorInfo();
+    _tempSensor_2Info = _tempSensor_2.getSensorInfo();
+    _tempSensor_3Info = _tempSensor_3.getSensorInfo();
     
     strcpy(sensorInfo.ph, _phSensorInfo.c_str());
-    strcpy(sensorInfo.temp, _tempSensorInfo.c_str());
+    strcpy(sensorInfo.temp_1, _tempSensor_1Info.c_str());
+    strcpy(sensorInfo.temp_2, _tempSensor_2Info.c_str());
+    strcpy(sensorInfo.temp_3, _tempSensor_3Info.c_str());
     
     _socket->send((char*) &sensorInfo, sizeof(SensorInfo));
 }
@@ -183,10 +348,14 @@ void EZOSensors::getSensorStatus(const MessageHeader* data) {
     }
     
     _phSensorStatus = _phSensor.getSensorStatus();
-    _tempSensorStatus = _tempSensor.getSensorStatus();
+    _tempSensor_1Status = _tempSensor_1.getSensorStatus();
+    _tempSensor_2Status = _tempSensor_2.getSensorStatus();
+    _tempSensor_3Status = _tempSensor_3.getSensorStatus();
     
     strcpy(sensorStatus.ph, _phSensorStatus.c_str());
-    strcpy(sensorStatus.temp, _tempSensorStatus.c_str());
+    strcpy(sensorStatus.temp_1, _tempSensor_1Status.c_str());
+    strcpy(sensorStatus.temp_2, _tempSensor_2Status.c_str());
+    strcpy(sensorStatus.temp_3, _tempSensor_3Status.c_str());
     
     _socket->send((char*) &sensorStatus, sizeof(SensorStatus));
 }
@@ -200,10 +369,22 @@ void EZOSensors::checkSensorConnection() {
             _phSensorConnected = false;
         }
         
-        if (_tempReading != -1023) {
-            _tempSensorConnected = true;
+        if (_temp_1Reading != -1023) {
+            _tempSensor_1Connected = true;
         } else {
-            _tempSensorConnected = false;
+            _tempSensor_1Connected = false;
+        }
+
+        if (_temp_2Reading != -1023) {
+            _tempSensor_2Connected = true;
+        } else {
+            _tempSensor_2Connected = false;
+        }
+
+        if (_temp_3Reading != -1023) {
+            _tempSensor_3Connected = true;
+        } else {
+            _tempSensor_3Connected = false;
         }
     }
     
@@ -336,7 +517,7 @@ void EZOSensors::run() {
             }
             // } else if (_socketBytes = -3001) { // recv has timed out
             //     _tempReading = _tempSensor.receiveReading();
-            //     if (_targetTemp < _tempReading) {
+            //     if (_tempSetpoint < _tempReading) {
             //         _pwmDutyCycle = 0;
             //     } else {
             //         _pwmDutyCycle = 1;
@@ -352,9 +533,17 @@ void EZOSensors::run() {
         setBoardState(WAIT_FOR_CONNECTION);
 
         _readingPending = false;
-        _pwmDutyCycle.write(0);
+        _initSetpoint = true;
+        _CMDRead = false;
+        _tempSetpoint = 0;
+        _pid_1.reset();
+        _pid_2.reset();
+        _pid_3.reset();
+        // _pwmDutyCycle.write(0);
         _phSensor.sleep();
-        _tempSensor.sleep();
+        _tempSensor_1.sleep();
+        _tempSensor_2.sleep();
+        _tempSensor_3.sleep();
     }
 }
 
