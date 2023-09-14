@@ -1,4 +1,4 @@
-# Install script for directory: C:/Users/menwst/Documents/CPP/EZO_sensors-mbed/mbed-cmake/mbed-src
+# Install script for directory: C:/Users/menwst/Documents/CPP/syringe_pump-mbed/mbed-cmake/mbed-src
 
 # Set the install prefix
 if(NOT DEFINED CMAKE_INSTALL_PREFIX)

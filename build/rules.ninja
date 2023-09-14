@@ -14,7 +14,7 @@
 #############################################
 # Rule for compiling CXX files.
 
-rule CXX_COMPILER__EZO_sensors_RelWithDebInfo
+rule CXX_COMPILER__syringe_pump_RelWithDebInfo
   depfile = $DEP_FILE
   deps = gcc
   command = C:\gcc-arm-none-eabi\bin\arm-none-eabi-g++.exe  $DEFINES $INCLUDES $FLAGS -MD -MT $out -MF $DEP_FILE -o $out -c $in
@@ -24,7 +24,7 @@ rule CXX_COMPILER__EZO_sensors_RelWithDebInfo
 #############################################
 # Rule for linking CXX executable.
 
-rule CXX_EXECUTABLE_LINKER__EZO_sensors_RelWithDebInfo
+rule CXX_EXECUTABLE_LINKER__syringe_pump_RelWithDebInfo
   command = cmd.exe /C "$PRE_LINK && C:\gcc-arm-none-eabi\bin\arm-none-eabi-g++.exe  $FLAGS  $LINK_FLAGS $in  -o $TARGET_FILE $LINK_PATH $LINK_LIBRARIES && $POST_BUILD"
   description = Linking CXX executable $TARGET_FILE
   restat = $RESTAT
@@ -83,7 +83,7 @@ rule CXX_STATIC_LIBRARY_LINKER__mbed-os-static_RelWithDebInfo
 # Rule for re-running cmake.
 
 rule RERUN_CMAKE
-  command = "C:\Program Files\CMake\bin\cmake.exe" --regenerate-during-build -SC:\Users\menwst\Documents\CPP\EZO_sensors-mbed -BC:\Users\menwst\Documents\CPP\EZO_sensors-mbed\build
+  command = "C:\Program Files\CMake\bin\cmake.exe" --regenerate-during-build -SC:\Users\menwst\Documents\CPP\syringe_pump-mbed -BC:\Users\menwst\Documents\CPP\syringe_pump-mbed\build
   description = Re-running CMake...
   generator = 1
 

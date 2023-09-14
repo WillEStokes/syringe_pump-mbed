@@ -22,34 +22,3 @@ exit.c:(.text.exit+0x2c): undefined reference to `_exit'
 collect2.exe: error: ld returned 1 exit status
 
 
-Determining if the C compiler works failed with the following output:
-Change Dir: C:/Users/menwst/Documents/CPP/EZO_sensors-mbed/build/CMakeFiles/CMakeTmp
-
-Run Build Command(s):nmake /nologo cmTC_3dc2a\fast && The system cannot find the file specified
-Generator: execution of make failed. Make command was: nmake /nologo cmTC_3dc2a\fast && 
-
-
-Compiling the C compiler identification source file "CMakeCCompilerId.c" failed.
-Compiler: C:/gcc-arm-none-eabi/bin/arm-none-eabi-gcc.exe 
-Build flags: -Wall;-Wextra;-Wno-unused-parameter;-Wno-missing-field-initializers;-fmessage-length=0;-fno-exceptions;-ffunction-sections;-fdata-sections;-funsigned-char;-fomit-frame-pointer;-Os;-g;-DMBED_TRAP_ERRORS_ENABLED=1;-mcpu=cortex-m4;-mthumb;-mfpu=fpv4-sp-d16;-mfloat-abi=softfp;-DMBED_ROM_START=0x0;-DMBED_ROM_SIZE=0x100000;-DMBED_RAM1_START=0x1fff0000;-DMBED_RAM1_SIZE=0x10000;-DMBED_RAM_START=0x20000000;-DMBED_RAM_SIZE=0x30000
-Id flags:  
-
-The output was:
-1
-c:/gcc-arm-none-eabi/bin/../lib/gcc/arm-none-eabi/10.3.1/../../../../arm-none-eabi/bin/ld.exe: c:/gcc-arm-none-eabi/bin/../lib/gcc/arm-none-eabi/10.3.1/../../../../arm-none-eabi/lib/thumb/v7e-m+fp/softfp\libg.a(lib_a-exit.o): in function `exit':
-exit.c:(.text.exit+0x16): undefined reference to `_exit'
-collect2.exe: error: ld returned 1 exit status
-
-
-Compiling the CXX compiler identification source file "CMakeCXXCompilerId.cpp" failed.
-Compiler: C:/gcc-arm-none-eabi/bin/arm-none-eabi-g++.exe 
-Build flags: -Wall;-Wextra;-Wno-unused-parameter;-Wno-missing-field-initializers;-fmessage-length=0;-fno-exceptions;-ffunction-sections;-fdata-sections;-funsigned-char;-fomit-frame-pointer;-Os;-g;-DMBED_TRAP_ERRORS_ENABLED=1;-mcpu=cortex-m4;-mthumb;-mfpu=fpv4-sp-d16;-mfloat-abi=softfp;-DMBED_ROM_START=0x0;-DMBED_ROM_SIZE=0x100000;-DMBED_RAM1_START=0x1fff0000;-DMBED_RAM1_SIZE=0x10000;-DMBED_RAM_START=0x20000000;-DMBED_RAM_SIZE=0x30000;-Wvla;-fno-exceptions;-fno-rtti
-Id flags:  
-
-The output was:
-1
-c:/gcc-arm-none-eabi/bin/../lib/gcc/arm-none-eabi/10.3.1/../../../../arm-none-eabi/bin/ld.exe: c:/gcc-arm-none-eabi/bin/../lib/gcc/arm-none-eabi/10.3.1/../../../../arm-none-eabi/lib/thumb/v7e-m+fp/softfp\libg.a(lib_a-exit.o): in function `exit':
-exit.c:(.text.exit+0x16): undefined reference to `_exit'
-collect2.exe: error: ld returned 1 exit status
-
-

@@ -1,17 +1,28 @@
 #include "debug.h"
-#include "EZOSensors.h"
+#include "SyringePump.h"
 #include "mbed.h"
 #include "EthernetInterface.h"
-#include "EZO.h"
 
-EZOSensors ezosensors(
-    LED1,
-    D9 ); // green LED
-    // D10 ); // mosfet PWM
+SyringePump syringePump(
+        PTD2, // mosi
+        PTD3, // miso
+        PTD1, // sclk
+        PTC2, // ss
+        PTC3, // dirPin
+        PTD0, // stepPin
+        //PTB21, // stepPin (blue LED for debugging)
+        PTB18, // maxLimSwPin
+        PTB19, // minLimSwPin
+        PTC10, // statusLED (LED1) or green
+        PTA1, // errorLED (LED2) or yellow
+        LED1, // redLE
+        PTB23, // stepperErrorPin
+        PTA2, // stepperResetPin
+        PTB2); // slaPin
 
 int main(int, char**) {
+
     // Run
-    ezosensors.run();
+    syringePump.run();
 
 }
-

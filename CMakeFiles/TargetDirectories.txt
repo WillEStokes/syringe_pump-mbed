@@ -1,0 +1,8 @@
+C:/Users/menwst/Documents/CPP/syringe_pump-mbed/CMakeFiles/EZO_sensors.dir
+C:/Users/menwst/Documents/CPP/syringe_pump-mbed/CMakeFiles/flash-EZO_sensors.dir
+C:/Users/menwst/Documents/CPP/syringe_pump-mbed/CMakeFiles/edit_cache.dir
+C:/Users/menwst/Documents/CPP/syringe_pump-mbed/CMakeFiles/rebuild_cache.dir
+C:/Users/menwst/Documents/CPP/syringe_pump-mbed/mbed-cmake/mbed-src/CMakeFiles/mbed-linker-script.dir
+C:/Users/menwst/Documents/CPP/syringe_pump-mbed/mbed-cmake/mbed-src/CMakeFiles/rebuild_cache.dir
+C:/Users/menwst/Documents/CPP/syringe_pump-mbed/mbed-cmake/mbed-src/CMakeFiles/mbed-os-static.dir
+C:/Users/menwst/Documents/CPP/syringe_pump-mbed/mbed-cmake/mbed-src/CMakeFiles/edit_cache.dir
