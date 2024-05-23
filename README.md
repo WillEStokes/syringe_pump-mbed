@@ -40,13 +40,3 @@ Messages have a header defined as:
 
 ### Message Receiver Function
 Messages are received in a continuous loop, waiting for a header and then processing the relevant command through the handler functions. Only the STOP_PUMP and GET_STATUS commands can interrupt an ongoing pump action. Unsupported messages are returned with an error.
-
-## Getting Started
-To use this repository:
-
-Clone the repository to your machine.
-1. Open the project using Visual Studio Code.
-2. Ensure you have the necessary extensions and tools for working with K64F board.
-3. Compile and deploy to the K64F board.
-## Contribution
-Contributions are welcome! If you encounter any issues or have features in mind, feel free to open an issue or a pull request.
