@@ -28,7 +28,7 @@ Each of these commands corresponds to a message handler function which processes
 ### Message Header
 Messages have a header defined as:
 
-```
+```cpp
 typedef struct {
     uint8_t packetLength;
     uint8_t fid;
