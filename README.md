@@ -29,11 +29,11 @@ Each of these commands corresponds to a message handler function which processes
 Messages have a header defined as:
 
 ```
-typedef struct {`<br />
-    uint8_t packetLength;`<br />
-    uint8_t fid;`<br />
-    uint8_t error;`<br />
-} __attribute__((__packed__)) MessageHeader;`<br />
+typedef struct {
+    uint8_t packetLength;
+    uint8_t fid;
+    uint8_t error;
+} __attribute__((__packed__)) MessageHeader;
 ```
 
 - `packetLength`: Length of the entire packet.
