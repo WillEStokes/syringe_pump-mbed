@@ -28,11 +28,13 @@ Each of these commands corresponds to a message handler function which processes
 ### Message Header
 Messages have a header defined as:
 
-`typedef struct {`<br />
-`    uint8_t packetLength;`<br />
-`    uint8_t fid;`<br />
-`    uint8_t error;`<br />
-`} __attribute__((__packed__)) MessageHeader;`<br />
+```
+typedef struct {`<br />
+    uint8_t packetLength;`<br />
+    uint8_t fid;`<br />
+    uint8_t error;`<br />
+} __attribute__((__packed__)) MessageHeader;`<br />
+```
 
 - `packetLength`: Length of the entire packet.
 - `fid`: Functional ID, denoting the command type.
